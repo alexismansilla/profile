@@ -1,0 +1,40 @@
+version: '2'
+services:
+  profile-db:
+    image: postgres:9.5.3
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_USER=profile
+      - POSTGRES_DB=profile_development
+    volumes_from:
+      - profile-data
+  profile-data:
+    image: postgres:9.5.3
+    volumes:
+      - /var/lib/postgresql
+    command: "true"
+  profile-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    depends_on:
+      - profile-db
+    environment:
+      - PASSENGER_APP_ENV=development
+    command: ["./wait-for-postgres.sh", "profile-db", "bin/rails", "db:migrate"]
+  profile:
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    depends_on:
+      - profile-db
+      - profile-migrate
+    ports:
+      - "80"
+    env_file:
+      - .env.webapp
+    environment:
+      - PASSENGER_APP_ENV=development
+      - RAILS_LOG_TO_STDOUT=true
+    volumes:
+      - .:/home/app/webapp
